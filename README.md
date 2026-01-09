@@ -162,3 +162,163 @@ CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
 
 **Why copy dependencies before code?**
 Docker caches each layer. If your code changes but dependencies don't, Docker reuses the cached dependency layer, making rebuilds faster.
+
+---
+
+## Docker Volumes (PostgreSQL Example)
+
+### What are Volumes?
+
+Volumes are Docker-managed storage that persists data even when containers are removed. This is critical for databases - you don't want to lose your data!
+
+### Step 1: PostgreSQL WITHOUT a Volume (The Problem)
+
+First, let's see what happens when we run PostgreSQL without a volume.
+
+**Start PostgreSQL container:**
+```bash
+docker run -d --name my-postgres -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres
+```
+
+**Create a database and add some data:**
+```bash
+# Create database
+docker exec -it my-postgres psql -U postgres -c "CREATE DATABASE school;"
+
+# Create table
+docker exec -it my-postgres psql -U postgres -d school -c "CREATE TABLE students (id SERIAL PRIMARY KEY, name TEXT);"
+
+# Insert data
+docker exec -it my-postgres psql -U postgres -d school -c "INSERT INTO students (name) VALUES ('Ali'), ('Sara'), ('Ahmed');"
+
+# Verify data exists
+docker exec -it my-postgres psql -U postgres -d school -c "SELECT * FROM students;"
+```
+
+**Output:**
+```
+ id | name
+----+-------
+  1 | Ali
+  2 | Sara
+  3 | Ahmed
+```
+
+**Now remove and recreate the container:**
+```bash
+# Remove container
+docker rm -f my-postgres
+
+# Start a new container
+docker run -d --name my-postgres -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres
+
+# Try to access the data - DATABASE IS GONE!
+docker exec -it my-postgres psql -U postgres -c "\l"
+```
+
+The `school` database no longer exists. All data was lost when we removed the container.
+
+---
+
+### Step 2: PostgreSQL WITH a Volume (The Solution)
+
+Now let's run PostgreSQL with a volume to persist the data.
+
+**Start PostgreSQL container with a volume:**
+```bash
+docker run -d --name my-postgres \
+  -e POSTGRES_PASSWORD=secret \
+  -p 5432:5432 \
+  -v postgres-data:/var/lib/postgresql/data \
+  postgres
+```
+
+**Explanation:**
+- `-v postgres-data:/var/lib/postgresql/data` - Creates a volume named `postgres-data` and mounts it to PostgreSQL's data directory
+- The volume is auto-created if it doesn't exist
+
+**Create database and add data (same as before):**
+```bash
+docker exec -it my-postgres psql -U postgres -c "CREATE DATABASE school;"
+docker exec -it my-postgres psql -U postgres -d school -c "CREATE TABLE students (id SERIAL PRIMARY KEY, name TEXT);"
+docker exec -it my-postgres psql -U postgres -d school -c "INSERT INTO students (name) VALUES ('Ali'), ('Sara'), ('Ahmed');"
+docker exec -it my-postgres psql -U postgres -d school -c "SELECT * FROM students;"
+```
+
+**Now remove and recreate the container:**
+```bash
+# Remove container
+docker rm -f my-postgres
+
+# Start a NEW container with the SAME volume
+docker run -d --name my-postgres \
+  -e POSTGRES_PASSWORD=secret \
+  -p 5432:5432 \
+  -v postgres-data:/var/lib/postgresql/data \
+  postgres
+
+# Check data - IT'S STILL THERE!
+docker exec -it my-postgres psql -U postgres -d school -c "SELECT * FROM students;"
+```
+
+**Output:**
+```
+ id | name
+----+-------
+  1 | Ali
+  2 | Sara
+  3 | Ahmed
+```
+
+Data persists because it's stored in the volume, not inside the container.
+
+---
+
+### Volume Commands
+
+```bash
+# List all volumes
+docker volume ls
+
+# Inspect a volume (see details and location)
+docker volume inspect postgres-data
+
+# Remove a volume (WARNING: deletes all data!)
+docker volume rm postgres-data
+
+# Remove all unused volumes
+docker volume prune
+```
+
+---
+
+### Visual Summary
+
+```
+WITHOUT VOLUME:                         WITH VOLUME:
+┌─────────────────┐                     ┌─────────────────┐
+│   Container     │                     │   Container     │
+│ ┌─────────────┐ │                     │ ┌─────────────┐ │
+│ │ PostgreSQL  │ │                     │ │ PostgreSQL  │ │
+│ │   Data      │ │                     │ │ /var/lib/.. │─┼───┐
+│ └─────────────┘ │                     │ └─────────────┘ │   │
+└─────────────────┘                     └─────────────────┘   │
+        │                                                     │
+        ▼                                        ┌────────────▼────────────┐
+   Container removed                             │      Volume:            │
+   = Data LOST                                   │    postgres-data        │
+                                                 │   = Data PERSISTS       │
+                                                 └─────────────────────────┘
+```
+
+---
+
+### Bind Mount vs Volume - Quick Comparison
+
+| Feature | Bind Mount | Volume |
+|---------|------------|--------|
+| **Syntax** | `-v ./local/path:/container/path` | `-v volume-name:/container/path` |
+| **Managed by** | You (host filesystem) | Docker |
+| **Use case** | Development, live code editing | Databases, persistent app data |
+| **Data location** | You choose the path | Docker manages it |
+| **Portability** | Tied to host paths | Works on any machine |
