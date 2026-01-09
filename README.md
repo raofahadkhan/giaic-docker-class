@@ -89,16 +89,25 @@ docker run -d -p 8000:8000 --env-file .env --name my-api fastapi-agents
 
 Use a bind mount to enable live code reloading - changes to `main.py` on your machine will be reflected in the container without rebuilding.
 
+**On Windows (use absolute path):**
+```bash
+docker run -d -p 8000:8000 --env-file .env --name my-api -v "%cd%\main.py:/app/main.py" fastapi-agents
+```
+
+**On Linux/Mac:**
 ```bash
 docker run -d -p 8000:8000 --env-file .env --name my-api -v ./main.py:/app/main.py fastapi-agents
 ```
 
-- `-v ./main.py:/app/main.py` - Bind mount that maps your local `main.py` to the container's `/app/main.py`
+- `-v` - Bind mount that maps your local `main.py` to the container's `/app/main.py`
+- On Windows, use `%cd%\main.py` to get the absolute path, or use the full path: `"C:\Users\YourName\path\to\main.py"`
 
 **How it works:**
 1. The container uses your local `main.py` instead of the one baked into the image
 2. When you edit `main.py`, uvicorn's `--reload` flag detects changes and restarts the server
 3. No need to rebuild the image for code changes
+
+**Note:** If your path contains spaces, make sure to quote the entire volume mount path.
 
 ### Useful Docker Commands
 
