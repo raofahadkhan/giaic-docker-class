@@ -226,11 +226,7 @@ Now let's run PostgreSQL with a volume to persist the data.
 
 **Start PostgreSQL container with a volume:**
 ```bash
-docker run -d --name my-postgres \
-  -e POSTGRES_PASSWORD=secret \
-  -p 5432:5432 \
-  -v postgres-data:/var/lib/postgresql/data \
-  postgres
+ docker run -d --name my-postgres -e POSTGRES_PASSWORD=secret -p 5432:5432 -v postgres-data:/var/lib/postgresql postgres
 ```
 
 **Explanation:**
