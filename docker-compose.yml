@@ -1,0 +1,43 @@
+services:
+  fahadapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-agents
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      # Mount main.py for live reload during development
+      - ./main.py:/app/main.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+  fahadfrontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-agents
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      # Mount main.py for live reload during development
+      - ./main.py:/app/main.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
