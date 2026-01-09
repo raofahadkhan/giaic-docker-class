@@ -251,11 +251,7 @@ docker exec -it my-postgres psql -U postgres -d school -c "SELECT * FROM student
 docker rm -f my-postgres
 
 # Start a NEW container with the SAME volume
-docker run -d --name my-postgres \
-  -e POSTGRES_PASSWORD=secret \
-  -p 5432:5432 \
-  -v postgres-data:/var/lib/postgresql/data \
-  postgres
+ docker run -d --name my-postgres -e POSTGRES_PASSWORD=secret -p 5432:5432 -v postgres-data:/var/lib/postgresql postgres
 
 # Check data - IT'S STILL THERE!
 docker exec -it my-postgres psql -U postgres -d school -c "SELECT * FROM students;"
